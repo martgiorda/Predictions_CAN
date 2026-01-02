@@ -4,22 +4,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.multioutput import MultiOutputClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
 
 world_cup_csv = pd.read_csv('WorldCupMatches.csv')
 
-world_cup = world_cup_csv[["Datetime","Home Team Name","Home Team Goals", "Away Team Goals","Away Team Name"]]
+world_cup = world_cup_csv[["Home Team Name","Home Team Goals", "Away Team Goals","Away Team Name"]]
 
 world_cup = world_cup.dropna(how='all',axis=0) 
 
-world_cup["Date_dt"] = pd.to_datetime(world_cup["Datetime"],infer_datetime_format=True)
-
-world_cup["Date"] = world_cup["Date_dt"].dt.date
-
 world_cup = world_cup.rename(columns={"Home Team Name": "home_team", "Home Team Goals": "home_score","Away Team Name": "away_team", "Away Team Goals": "away_score"})
-
-world_cup = world_cup.drop(["Datetime",'Date_dt', "Date"],axis=1)
 
 world_cup["home_score"] = world_cup["home_score"].astype(int)
 
@@ -27,11 +20,7 @@ world_cup["away_score"] = world_cup["away_score"].astype(int)
 
 can_hist_csv = pd.read_csv('African-Nations-results.csv')
 
-can_hist_csv["Date_dt"] = pd.to_datetime(can_hist_csv["date"],infer_datetime_format=True)
-
-can_hist_csv["Date"] = can_hist_csv["Date_dt"].dt.date
-
-can_hist_csv = can_hist_csv.drop(["date","Date_dt","tournament","Date"],axis=1)
+can_hist_csv = can_hist_csv.drop(["date", "tournament"],axis=1)
 
 can_hist_2025 = pd.read_csv('results.csv')
 
@@ -50,15 +39,13 @@ preprocessor = ColumnTransformer([(
     one_hot,
     categorical_features)],remainder="passthrough")
 
-model = RandomForestClassifier(n_estimators=200,
+model = RandomForestRegressor(n_estimators=200,
     random_state=42,
     n_jobs=-1)
 
-multi = MultiOutputClassifier(model)
-
 pipe = Pipeline(steps=[
     ("preprocess", preprocessor),
-    ("model", multi)
+    ("model", model)
 ])
 
 #Split
@@ -106,7 +93,7 @@ def appliquer_predictions(matches):
         axis=1
     )
     # preds est un DataFrame avec colonnes home_score, away_score (index = y.columns)
-    matches[["home_score", "away_score"]] = preds
+    matches[["home_score", "away_score"]] = preds.round().astype(int)
     return matches
 
 matches = appliquer_predictions(matches)
